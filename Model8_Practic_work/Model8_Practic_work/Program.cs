@@ -1,98 +1,290 @@
-﻿using System;
+using System;
 
-abstract class ReportGenerator
+namespace Model8_Practic_work
 {
-    public void GenerateReport()
+    public interface ICommand
     {
-        PrepareData();
-        FormatData();
-        CreateHeader();
-        SaveReport();
-        SendReport();
+        void Execute();
+        void Undo();
+    }
+    public class Light
+    {
+        public void On()
+        {
+            Console.WriteLine("Свет включен.");
+        }
+
+        public void Off()
+        {
+            Console.WriteLine("Свет выключен.");
+        }
+    }
+    public class AirConditioner
+    {
+        public void On()
+        {
+            Console.WriteLine("Кондиционер включен.");
+        }
+
+        public void Off()
+        {
+            Console.WriteLine("Кондиционер выключен.");
+        }
+    }
+    public class Television
+    {
+        public void On()
+        {
+            Console.WriteLine("Телевизор включен.");
+        }
+
+        public void Off()
+        {
+            Console.WriteLine("Телевизор выключен.");
+        }
+    }
+    public class LightOnCommand : ICommand
+    {
+        private Light _light;
+
+        public LightOnCommand(Light light)
+        {
+            _light = light;
+        }
+
+        public void Execute()
+        {
+            _light.On();
+        }
+
+        public void Undo()
+        {
+            _light.Off();
+        }
     }
 
-    protected abstract void FormatData();
-
-    protected virtual void PrepareData()
+    public class LightOffCommand : ICommand
     {
-        Console.WriteLine("Preparing data for the report.");
+        private Light _light;
+
+        public LightOffCommand(Light light)
+        {
+            _light = light;
+        }
+
+        public void Execute()
+        {
+            _light.Off();
+        }
+
+        public void Undo()
+        {
+            _light.On();
+        }
+    }
+    public class AirConditionerOnCommand : ICommand
+    {
+        private AirConditioner _airConditioner;
+
+        public AirConditionerOnCommand(AirConditioner airConditioner)
+        {
+            _airConditioner = airConditioner;
+        }
+
+        public void Execute()
+        {
+            _airConditioner.On();
+        }
+
+        public void Undo()
+        {
+            _airConditioner.Off();
+        }
     }
 
-    protected virtual void CreateHeader()
+    public class AirConditionerOffCommand : ICommand
     {
-        Console.WriteLine("Creating default header for the report.");
+        private AirConditioner _airConditioner;
+
+        public AirConditionerOffCommand(AirConditioner airConditioner)
+        {
+            _airConditioner = airConditioner;
+        }
+
+        public void Execute()
+        {
+            _airConditioner.Off();
+        }
+
+        public void Undo()
+        {
+            _airConditioner.On();
+        }
+    }
+    public class TelevisionOnCommand : ICommand
+    {
+        private Television _television;
+
+        public TelevisionOnCommand(Television television)
+        {
+            _television = television;
+        }
+
+        public void Execute()
+        {
+            _television.On();
+        }
+
+        public void Undo()
+        {
+            _television.Off();
+        }
     }
 
-    protected virtual void SaveReport()
+    public class TelevisionOffCommand : ICommand
     {
-        Console.WriteLine("Saving report.");
+        private Television _television;
+
+        public TelevisionOffCommand(Television television)
+        {
+            _television = television;
+        }
+
+        public void Execute()
+        {
+            _television.Off();
+        }
+
+        public void Undo()
+        {
+            _television.On();
+        }
     }
-
-    protected virtual void SendReport()
+    public class RemoteControl
     {
-        Console.WriteLine("Sending report.");
+        private ICommand[] _onCommands;
+        private ICommand[] _offCommands;
+        private ICommand _lastCommand;
+
+        public RemoteControl()
+        {
+            _onCommands = new ICommand[5];  // 5 слотов для команд
+            _offCommands = new ICommand[5];
+            _lastCommand = null;
+        }
+
+        public void SetCommand(int slot, ICommand onCommand, ICommand offCommand)
+        {
+            _onCommands[slot] = onCommand;
+            _offCommands[slot] = offCommand;
+        }
+
+        public void OnButtonWasPressed(int slot)
+        {
+            if (_onCommands[slot] != null)
+            {
+                _onCommands[slot].Execute();
+                _lastCommand = _onCommands[slot];
+            }
+            else
+            {
+                Console.WriteLine("Команда не назначена.");
+            }
+        }
+
+        public void OffButtonWasPressed(int slot)
+        {
+            if (_offCommands[slot] != null)
+            {
+                _offCommands[slot].Execute();
+                _lastCommand = _offCommands[slot];
+            }
+            else
+            {
+                Console.WriteLine("Команда не назначена.");
+            }
+        }
+
+        public void UndoButtonWasPressed()
+        {
+            if (_lastCommand != null)
+            {
+                _lastCommand.Undo();
+            }
+            else
+            {
+                Console.WriteLine("Отмена невозможна.");
+            }
+        }
     }
-}
-
-class PdfReport : ReportGenerator
-{
-    protected override void FormatData()
+    public class MacroCommand : ICommand
     {
-        Console.WriteLine("Formatting data for PDF report.");
+        private ICommand[] _commands;
+
+        public MacroCommand(ICommand[] commands)
+        {
+            _commands = commands;
+        }
+
+        public void Execute()
+        {
+            foreach (ICommand command in _commands)
+            {
+                command.Execute();
+            }
+        }
+
+        public void Undo()
+        {
+            foreach (ICommand command in _commands)
+            {
+                command.Undo();
+            }
+        }
     }
-
-    protected override void CreateHeader()
+    class Program
     {
-        Console.WriteLine("Creating header for PDF report.");
-    }
+        static void Main(string[] args)
+        {
+            // Создаем устройства
+            Light livingRoomLight = new Light();
+            AirConditioner airConditioner = new AirConditioner();
+            Television television = new Television();
 
-    protected override void SaveReport()
-    {
-        Console.WriteLine("Saving PDF report.");
-    }
-}
+            // Создаем команды для управления устройствами
+            LightOnCommand lightOn = new LightOnCommand(livingRoomLight);
+            LightOffCommand lightOff = new LightOffCommand(livingRoomLight);
+            AirConditionerOnCommand acOn = new AirConditionerOnCommand(airConditioner);
+            AirConditionerOffCommand acOff = new AirConditionerOffCommand(airConditioner);
+            TelevisionOnCommand tvOn = new TelevisionOnCommand(television);
+            TelevisionOffCommand tvOff = new TelevisionOffCommand(television);
 
-class ExcelReport : ReportGenerator
-{
-    protected override void FormatData()
-    {
-        Console.WriteLine("Formatting data for Excel report.");
-    }
+            // Создаем пульт
+            RemoteControl remoteControl = new RemoteControl();
+            remoteControl.SetCommand(0, lightOn, lightOff);
+            remoteControl.SetCommand(1, acOn, acOff);
+            remoteControl.SetCommand(2, tvOn, tvOff);
 
-    protected override void SaveReport()
-    {
-        Console.WriteLine("Saving Excel report.");
-    }
-}
+            // Тестируем команды
+            remoteControl.OnButtonWasPressed(0);  // Включаем свет
+            remoteControl.OffButtonWasPressed(0); // Выключаем свет
+            remoteControl.UndoButtonWasPressed(); // Отменяем выключение света
 
-class HtmlReport : ReportGenerator
-{
-    protected override void FormatData()
-    {
-        Console.WriteLine("Formatting data for HTML report.");
-    }
+            remoteControl.OnButtonWasPressed(1);  // Включаем кондиционер
+            remoteControl.OffButtonWasPressed(1); // Выключаем кондиционер
+            remoteControl.UndoButtonWasPressed(); // Отменяем выключение кондиционера
 
-    protected override void CreateHeader()
-    {
-        Console.WriteLine("Creating header for HTML report.");
-    }
-}
+            // Макрокоманда
+            ICommand[] partyMode = { lightOn, acOn, tvOn };
+            MacroCommand partyMacro = new MacroCommand(partyMode);
 
-class Program
-{
-    static void Main(string[] args)
-    {
-        ReportGenerator pdfReport = new PdfReport();
-        pdfReport.GenerateReport();
+            // Выполнение макрокоманды
+            Console.WriteLine("Выполняем макрокоманду 'Party Mode'");
+            partyMacro.Execute();
+            Console.WriteLine("Отмена макрокоманды 'Party Mode'");
+            partyMacro.Undo();
 
-        Console.WriteLine();
-
-        ReportGenerator excelReport = new ExcelReport();
-        excelReport.GenerateReport();
-
-        Console.WriteLine();
-
-        ReportGenerator htmlReport = new HtmlReport();
-        htmlReport.GenerateReport();
+            Console.ReadKey();
+        }
     }
 }
