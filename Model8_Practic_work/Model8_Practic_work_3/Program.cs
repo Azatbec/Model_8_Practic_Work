@@ -1,155 +1,160 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-// 1. Интерфейс IMediator
-public interface IMediator
+namespace Model8_Practic_work_3
 {
-    void SendMessage(string message, IUser sender, string channel);
-    void AddUser(IUser user, string channel);
-    void RemoveUser(IUser user, string channel);
-    void SendPrivateMessage(string message, IUser sender, IUser receiver);
-}
-
-// 2. Класс ChatMediator
-public class ChatMediator : IMediator
-{
-    private readonly Dictionary<string, List<IUser>> _channels = new();
-
-    public void SendMessage(string message, IUser sender, string channel)
+    public interface IMediator
     {
-        if (!_channels.ContainsKey(channel))
+        void SendMessage(string message, IUser sender);
+        void AddUser(IUser user);
+        void RemoveUser(IUser user);
+    }
+
+    public interface IUser
+    {
+        void SendMessage(string message);
+        void ReceiveMessage(string message, IUser sender);
+        void ReceiveSystemMessage(string message);
+        string GetName();
+    }
+
+    public class ChatMediator : IMediator
+    {
+        private List<IUser> users;
+
+        public ChatMediator()
         {
-            Console.WriteLine($"Channel '{channel}' does not exist. Creating it now.");
-            _channels[channel] = new List<IUser>();
+            users = new List<IUser>();
         }
 
-        if (!_channels[channel].Contains(sender))
+        public void AddUser(IUser user)
         {
-            Console.WriteLine($"{sender.Name} is not a member of channel '{channel}'. Please join first.");
-            return;
+            users.Add(user);
         }
 
-        foreach (var user in _channels[channel])
+        public void RemoveUser(IUser user)
         {
-            if (user != sender)
+            users.Remove(user);
+        }
+
+        public void SendMessage(string message, IUser sender)
+        {
+            foreach (var user in users)
             {
-                user.ReceiveMessage(message, sender, channel);
+                if (user != sender)
+                {
+                    user.ReceiveMessage(message, sender);
+                }
+            }
+        }
+
+        public class User : IUser
+        {
+            private string name;
+            private IMediator mediator;
+
+            public User(string name, IMediator mediator)
+            {
+                this.name = name;
+                this.mediator = mediator;
+            }
+
+            public void SendMessage(string message)
+            {
+                Console.WriteLine($"{name} sends message: {message}");
+                mediator.SendMessage(message, this);
+            }
+
+            public void ReceiveMessage(string message, IUser sender)
+            {
+                Console.WriteLine($"{name} receives message from {sender.GetName()}: {message}");
+            }
+
+            public void ReceiveSystemMessage(string message)
+            {
+                Console.WriteLine($"[System message to {name}]: {message}");
+            }
+
+            public string GetName()
+            {
+                return name;
             }
         }
     }
 
-    public void AddUser(IUser user, string channel)
+    public class ChannelMediator : IMediator
     {
-        if (!_channels.ContainsKey(channel))
-        {
-            _channels[channel] = new List<IUser>();
-        }
-        _channels[channel].Add(user);
-        Console.WriteLine($"{user.Name} has joined the channel '{channel}'.");
-        NotifyUsers($"{user.Name} has joined the channel '{channel}'.", channel);
-    }
+        private string channelName;
+        private Dictionary<string, List<IUser>> channels;
 
-    public void RemoveUser(IUser user, string channel)
-    {
-        if (_channels.ContainsKey(channel))
+        public ChannelMediator(string channelName)
         {
-            _channels[channel].Remove(user);
-            Console.WriteLine($"{user.Name} has left the channel '{channel}'.");
-            NotifyUsers($"{user.Name} has left the channel '{channel}'.", channel);
+            this.channelName = channelName;
+            channels = new Dictionary<string, List<IUser>>();
         }
-    }
 
-    private void NotifyUsers(string message, string channel)
-    {
-        if (_channels.ContainsKey(channel))
+        public void AddUser(IUser user)
         {
-            foreach (var user in _channels[channel])
+            if (!channels.ContainsKey(channelName))
             {
-                user.ReceiveNotification(message, channel);
+                channels[channelName] = new List<IUser>();
+            }
+            channels[channelName].Add(user);
+        }
+
+        public void RemoveUser(IUser user)
+        {
+            if (channels.ContainsKey(channelName))
+            {
+                channels[channelName].Remove(user);
+            }
+        }
+
+        public void SendMessage(string message, IUser sender)
+        {
+            if (channels.ContainsKey(channelName))
+            {
+                foreach (IUser user in channels[channelName])
+                {
+                    if (user != sender)
+                    {
+                        user.ReceiveMessage(message, sender);
+                    }
+                }
             }
         }
     }
 
-    public void SendPrivateMessage(string message, IUser sender, IUser receiver)
+    class Program
     {
-        receiver.ReceiveMessage(message, sender, "Private");
-    }
-}
+        static void Main(string[] args)
+        {
+            // Example usage
+            IMediator chatMediator = new ChatMediator();
+            IUser user1 = new ChatMediator.User("Alice", chatMediator);
+            IUser user2 = new ChatMediator.User("Bob", chatMediator);
+            IUser user3 = new ChatMediator.User("Charlie", chatMediator);
 
-// 3. Интерфейс IUser
-public interface IUser
-{
-    string Name { get; }
-    void ReceiveMessage(string message, IUser sender, string channel);
-    void ReceiveNotification(string message, string channel);
-}
+            chatMediator.AddUser(user1);
+            chatMediator.AddUser(user2);
+            chatMediator.AddUser(user3);
 
-// 4. Класс User
-public class User : IUser
-{
-    public string Name { get; }
-    private readonly IMediator _mediator;
+            user1.SendMessage("Hello, everyone!");
+            user2.SendMessage("Hi, Alice!");
 
-    public User(string name, IMediator mediator)
-    {
-        Name = name;
-        _mediator = mediator;
-    }
+            Console.WriteLine("\nUsing Channel Mediator:");
 
-    public void SendMessage(string message, string channel)
-    {
-        Console.WriteLine($"{Name} sends message: '{message}' in channel '{channel}'.");
-        _mediator.SendMessage(message, this, channel);
-    }
+            IMediator channelMediator = new ChannelMediator("General");
+            IUser user4 = new ChatMediator.User("David", channelMediator);
+            IUser user5 = new ChatMediator.User("Eve", channelMediator);
 
-    public void SendPrivateMessage(string message, IUser receiver)
-    {
-        Console.WriteLine($"{Name} sends private message: '{message}' to {receiver.Name}.");
-        _mediator.SendPrivateMessage(message, this, receiver);
-    }
+            channelMediator.AddUser(user4);
+            channelMediator.AddUser(user5);
 
-    public void ReceiveMessage(string message, IUser sender, string channel)
-    {
-        Console.WriteLine($"{Name} received message: '{message}' from {sender.Name} in channel '{channel}'.");
-    }
+            user4.SendMessage("Welcome to the General channel!");
+            user5.SendMessage("Thanks, David!");
 
-    public void ReceiveNotification(string message, string channel)
-    {
-        Console.WriteLine($"{Name} received notification: '{message}' in channel '{channel}'.");
-    }
-}
-
-// 5. Клиентский код
-class Program
-{
-    static void Main(string[] args)
-    {
-        var mediator = new ChatMediator();
-
-        var user1 = new User("Alice", mediator);
-        var user2 = new User("Bob", mediator);
-        var user3 = new User("Charlie", mediator);
-        var user4 = new User("Admin", mediator); // Добавим администратора
-
-        mediator.AddUser(user1, "General");
-        mediator.AddUser(user2, "General");
-        mediator.AddUser(user3, "Sports");
-        mediator.AddUser(user4, "General"); // Администратор может тоже участвовать
-
-        user1.SendMessage("Hello, everyone!", "General");
-        user3.SendMessage("Good game last night!", "Sports");
-
-        mediator.RemoveUser(user2, "General");
-        user1.SendMessage("Where did Bob go?", "General");
-
-        // Пример отправки приватного сообщения
-        user1.SendPrivateMessage("Hi Bob, are you there?", user2); // Bob is removed from the channel
-
-        // Тестирование отправки сообщения в несуществующий канал
-        user4.SendMessage("New rules for the General channel.", "Rules");
-
-        // Проверка кросс-канальной отправки
-        mediator.AddUser(user2, "Sports"); // Bob возвращается в Sports
-        user2.SendMessage("Can we talk about the game here?", "Sports");
+            Console.ReadKey();
+        }
     }
 }
