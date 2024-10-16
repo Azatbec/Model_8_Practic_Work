@@ -1,135 +1,157 @@
-﻿using System;
-using System.Collections.Generic;
-
-public interface IMediator
+using System;
+namespace Model8_Practic_work_2
 {
-    void SendMessage(string message, IUser sender, string channel);
-    void AddUser(IUser user, string channel);
-    void RemoveUser(IUser user, string channel);
-    void SendPrivateMessage(string message, IUser sender, IUser receiver);
-}
-
-public class ChatMediator : IMediator
-{
-    private readonly Dictionary<string, List<IUser>> _channels = new();
-
-    public void SendMessage(string message, IUser sender, string channel)
+    public abstract class ReportGenerator
     {
-        if (!_channels.ContainsKey(channel))
+        // Шаблонный метод для создания отчета
+        public void GenerateReport()
         {
-            Console.WriteLine($"Channel '{channel}' does not exist.");
-            return;
+            PrepareData();
+            GenerateHeader();
+            GenerateBody();
+            if (CustomerWantsSave())
+            {
+                SaveReport();
+            }
+            else
+            {
+                SendByEmail();
+            }
+            LogReportGeneration();
         }
 
-        foreach (var user in _channels[channel])
+        // Шаг 1: Подготовка данных (общий для всех отчетов)
+        protected void PrepareData()
         {
-            if (user != sender)
+            Console.WriteLine("Preparing data...");
+        }
+
+        // Шаг 2: Генерация заголовка (абстрактный метод)
+        protected abstract void GenerateHeader();
+
+        // Шаг 3: Генерация тела отчета (абстрактный метод)
+        protected abstract void GenerateBody();
+
+        // Шаг 4: Сохранение отчета (абстрактный метод)
+        protected abstract void SaveReport();
+
+        // Опциональный метод для отправки по email
+        protected virtual void SendByEmail()
+        {
+            Console.WriteLine("Sending report via email...");
+        }
+
+        // Хук для решения о сохранении отчета
+        protected virtual bool CustomerWantsSave()
+        {
+            while (true)
             {
-                user.ReceiveMessage(message, sender, channel);
+                Console.WriteLine("Do you want to save the report? (y/n): ");
+                string input = Console.ReadLine()?.ToLower();
+                if (input == "y" || input == "n")
+                {
+                    return input == "y";
+                }
+                Console.WriteLine("Invalid input. Please enter 'y' or 'n'.");
             }
         }
-    }
 
-    public void AddUser(IUser user, string channel)
-    {
-        if (!_channels.ContainsKey(channel))
+        // Логирование процесса генерации отчета
+        protected virtual void LogReportGeneration()
         {
-            _channels[channel] = new List<IUser>();
-        }
-        _channels[channel].Add(user);
-        Console.WriteLine($"{user.Name} has joined the channel '{channel}'");
-        NotifyUsers($"{user.Name} has joined the channel '{channel}'", channel);
-    }
-
-    public void RemoveUser(IUser user, string channel)
-    {
-        if (_channels.ContainsKey(channel))
-        {
-            _channels[channel].Remove(user);
-            Console.WriteLine($"{user.Name} has left the channel '{channel}'");
-            NotifyUsers($"{user.Name} has left the channel '{channel}'", channel);
+            Console.WriteLine("Logging: Report generation step completed.");
         }
     }
-
-    private void NotifyUsers(string message, string channel)
+    public class PdfReport : ReportGenerator
     {
-        if (_channels.ContainsKey(channel))
+        protected override void GenerateHeader()
         {
-            foreach (var user in _channels[channel])
-            {
-                user.ReceiveNotification(message, channel);
-            }
+            Console.WriteLine("Generating PDF header...");
+        }
+
+        protected override void GenerateBody()
+        {
+            Console.WriteLine("Generating PDF body...");
+        }
+
+        protected override void SaveReport()
+        {
+            Console.WriteLine("Saving PDF report...");
         }
     }
-
-    public void SendPrivateMessage(string message, IUser sender, IUser receiver)
+    public class ExcelReport : ReportGenerator
     {
-        receiver.ReceiveMessage(message, sender, "Private");
+        protected override void GenerateHeader()
+        {
+            Console.WriteLine("Generating Excel header...");
+        }
+
+        protected override void GenerateBody()
+        {
+            Console.WriteLine("Generating Excel body...");
+        }
+
+        protected override void SaveReport()
+        {
+            Console.WriteLine("Saving Excel report...");
+        }
     }
-}
-
-public interface IUser
-{
-    string Name { get; }
-    void ReceiveMessage(string message, IUser sender, string channel);
-    void ReceiveNotification(string message, string channel);
-}
-
-public class User : IUser
-{
-    public string Name { get; }
-    private readonly IMediator _mediator;
-
-    public User(string name, IMediator mediator)
+    public class HtmlReport : ReportGenerator
     {
-        Name = name;
-        _mediator = mediator;
+        protected override void GenerateHeader()
+        {
+            Console.WriteLine("Generating HTML header...");
+        }
+
+        protected override void GenerateBody()
+        {
+            Console.WriteLine("Generating HTML body...");
+        }
+
+        protected override void SaveReport()
+        {
+            Console.WriteLine("Saving HTML report...");
+        }
     }
-
-    public void SendMessage(string message, string channel)
+    public class CsvReport : ReportGenerator
     {
-        Console.WriteLine($"{Name} sends message: '{message}' in channel '{channel}'");
-        _mediator.SendMessage(message, this, channel);
+        protected override void GenerateHeader()
+        {
+            Console.WriteLine("Generating CSV header...");
+        }
+
+        protected override void GenerateBody()
+        {
+            Console.WriteLine("Generating CSV body...");
+        }
+
+        protected override void SaveReport()
+        {
+            Console.WriteLine("Saving CSV report...");
+        }
     }
-
-    public void SendPrivateMessage(string message, IUser receiver)
+    class Program
     {
-        Console.WriteLine($"{Name} sends private message: '{message}' to {receiver.Name}");
-        _mediator.SendPrivateMessage(message, this, receiver);
-    }
+        static void Main(string[] args)
+        {
+            ReportGenerator pdfReport = new PdfReport();
+            ReportGenerator excelReport = new ExcelReport();
+            ReportGenerator htmlReport = new HtmlReport();
+            ReportGenerator csvReport = new CsvReport();
 
-    public void ReceiveMessage(string message, IUser sender, string channel)
-    {
-        Console.WriteLine($"{Name} received message: '{message}' from {sender.Name} in channel '{channel}'");
-    }
+            Console.WriteLine("PDF Report:");
+            pdfReport.GenerateReport();
 
-    public void ReceiveNotification(string message, string channel)
-    {
-        Console.WriteLine($"{Name} received notification: '{message}' in channel '{channel}'");
-    }
-}
+            Console.WriteLine("\nExcel Report:");
+            excelReport.GenerateReport();
 
-class Program
-{
-    static void Main(string[] args)
-    {
-        var mediator = new ChatMediator();
+            Console.WriteLine("\nHTML Report:");
+            htmlReport.GenerateReport();
 
-        var user1 = new User("Alice", mediator);
-        var user2 = new User("Bob", mediator);
-        var user3 = new User("Charlie", mediator);
+            Console.WriteLine("\nCSV Report:");
+            csvReport.GenerateReport();
 
-        mediator.AddUser(user1, "General");
-        mediator.AddUser(user2, "General");
-        mediator.AddUser(user3, "Sports");
-
-        user1.SendMessage("Hello, everyone!", "General");
-        user3.SendMessage("Good game last night!", "Sports");
-
-        mediator.RemoveUser(user2, "General");
-        user1.SendMessage("Where did Bob go?", "General");
-
-        // Пример отправки приватного сообщения
-        user1.SendPrivateMessage("Hi Bob, are you there?", user2);
+            Console.ReadKey();
+        }
     }
 }
